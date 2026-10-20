@@ -5,7 +5,7 @@ CS3368 Group Project working on solving Sudoku puzzles with backtracking
 Initial Peer Reviewed Articles:
 [https://ejournal.unitomo.ac.id/index.php/ijair/article/view/6501](https://www.sciencedirect.com/science/article/pii/S0004370221001016?pes=vor&utm_source=scopus&getft_integrator=scopus) - Trevor
 
-https://ai.dmi.unibas.ch/_files/teaching/fs26/ai/material/ai-d06-simonis-cp2005ws.pdf - Ahmad
+https://ieeexplore.ieee.org/document/7887637 - Ahmad | 22 Citations, Accessed 10/19/26
 
 https://www.dbai.tuwien.ac.at/research/project/arte/sudoku/HybridHeuristicApproachForSudoku.pdf - Jacob
 
