@@ -12,3 +12,13 @@ https://www.dbai.tuwien.ac.at/research/project/arte/sudoku/HybridHeuristicApproa
 Presentation: https://texastechuniversity-my.sharepoint.com/:p:/g/personal/bro32090_ttu_edu/IQBeIznnRzyAT4A1yYQTDA-rAeBoDqZN10ozVw9KxdgPvvQ?e=dBhPHY
 
 Possible Code: https://github.com/PayThePizzo/SudokuSolver
+
+# To Run Code
+- cd to work path
+- clone this repository
+- cd to design_alg
+- run python sudokutester.py
+- choose configuration of your choice and see results
+## How Results are Displayed
+Graphical Results should automatically display after run
+Tabular Results are stored in sudoku_benchmark.csv for viewing
