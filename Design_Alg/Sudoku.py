@@ -448,7 +448,7 @@ class SudukoSolversWork:
 
 #AHMAD SA METHODS
      
-from SaMethods import (
+from ahmad_heuristics import (
     sa_cost,
     sa_random_fill,
     solve_sa,
