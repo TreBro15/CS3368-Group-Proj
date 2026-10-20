@@ -1,15 +1,39 @@
-import logging
-import os
-import pandas as pd 
-import matplotlib.pyplot as plt
 from collections import deque
+
 
 class SudukoSolversWork:
 
-    def __init__(self, grid):
+    def __init__(
+        self,
+        grid,
+        variable_heuristic="mrv",
+        value_heuristic="lcv",
+        use_arc_consistency=True,
+    ):
         if len(grid) != 9 or any(len(row) != 9 for row in grid):
             raise ValueError("Grid must be a 9x9 list of lists.")
 
+        if any(
+            not isinstance(value, int)
+            or isinstance(value, bool)
+            or not 0 <= value <= 9
+            for row in grid
+            for value in row
+        ):
+            raise ValueError("Grid values must be integers between 0 and 9.")
+
+        if variable_heuristic != "mrv":
+            raise ValueError("Must choose viable var heuristic")
+
+        if value_heuristic not in ("lcv", "lcb"):
+            raise ValueError("Must choose viable val heuristic")
+
+        if not isinstance(use_arc_consistency, bool):
+            raise ValueError("use_arc_consistency must be a boolean.")
+
+        self.variable_heuristic = variable_heuristic
+        self.value_heuristic = value_heuristic
+        self.use_arc_consistency = use_arc_consistency
         self.empty_cell = 0
         self.full_domain = set(range(1, 10))
         self.grid = [row[:] for row in grid]
@@ -21,9 +45,6 @@ class SudukoSolversWork:
         self.solved = False
         self.backtrack_steps = 0
         self.forward_steps = 0
-        self.ac3_revisions = 0
-        self.ac3_contradictions = 0
-        self.mrv_invocations = 0
         self.recursive_calls = 0
 
 
@@ -72,7 +93,7 @@ class SudukoSolversWork:
 
         return domain_matrix
 
-    def update_domains(self, row: int, col: int, num: int):
+    def update_domains(self, row: int, col: int, num: int) -> bool:
 
         """Update the domains of other cells when a number is placed.
 
@@ -83,6 +104,9 @@ class SudukoSolversWork:
             row (int): The row index of the cell where the number is placed.
             col (int): The column index of the cell where the number is placed.
             num (int): The number placed in the cell.
+
+        Returns:
+            bool: Whether every cell still has a non-empty domain.
         """
         # For each variable in same row or col
         for idx in range(9):
@@ -105,7 +129,12 @@ class SudukoSolversWork:
                     # Restrict domain of same-grid var
                     self.domains[idx_r][idx_c].discard(num)
 
-        pass
+        return all(
+            self.domains[r][c]
+            for r in range(9)
+            for c in range(9)
+        )
+
     def preprocess_domains(self):
         """Preprocess the domains by performing initial constraint propagation.
 
@@ -121,8 +150,6 @@ class SudukoSolversWork:
                 if len(self.domains[row][col]) == 1:
                     # Restrict the domains of variables in same row, col and grid
                     self.update_domains(row, col, list(self.domains[row][col])[0])
-
-        pass
 
     def get_neighbors(self, row: int, col: int):
         """Get all neighboring cells (same row, column, or 3x3 subgrid).
@@ -161,7 +188,7 @@ class SudukoSolversWork:
 
         return neighbors
 
-    def revise(self, xi: int, xj: int):
+    def revise(self, xi: tuple[int, int], xj: tuple[int, int]):
         """Revise the domain of cell xi to ensure arc consistency with cell xj.
 
         Arc consistency is ensured by checking if any value in xi's domain is
@@ -197,8 +224,6 @@ class SudukoSolversWork:
                 # Remove it
                 domain_xi.discard(single_value)
                 revised = True
-                # Increment AC-3 Revisions
-                self.ac3_revisions += 1
 
         return revised
 
@@ -232,8 +257,6 @@ class SudukoSolversWork:
             if self.revise(xi, xj):
                 # Contradiction found
                 if len(self.domains[xi[0]][xi[1]]) == 0:
-                    # Increment AC-3 Contradictions
-                    self.ac3_contradictions += 1
                     return False
 
                 for neighbor in self.get_neighbors(*xi):
@@ -245,7 +268,7 @@ class SudukoSolversWork:
         return True
 
 
-    #Most Restricted Variable Heuristic written by Trevor
+#Most Restricted Variable Heuristic written by Trevor
 
     def MRVh(self):
         min_possibilites = 10
@@ -259,7 +282,7 @@ class SudukoSolversWork:
                         chosen = (row,col)
         return chosen
 
-    #Least Constrained Val Heuristic
+#Least Constrained Val Heuristic
 
     def LCVh(self, row: int, col: int):
         def count_restrictions(value):
@@ -270,39 +293,147 @@ class SudukoSolversWork:
             return count
         return sorted(self.domains[row][col], key=count_restrictions)
 
+#Least Constrained Box Heuristic TREVOR'S HEURISTIC
+
+    def LCBh(self, row, col):
+        """Order values by how many candidates remain in the 3x3 box."""
+
+        candidates = list(self.domains[row][col])
+        box_scores = {}
+
+        start_row = (row // 3) * 3
+        start_col = (col // 3) * 3
+
+        for value in candidates:
+            self.grid[row][col] = value
+
+            remaining_candidates = 0
+
+            for r in range(start_row, start_row + 3):
+                for c in range(start_col, start_col + 3):
+
+                    if (r, c) == (row, col):
+                        continue
+
+                    if self.grid[r][c] == self.empty_cell:
+                        used = set(self.grid[r])
+                        used.update(self.grid[i][c] for i in range(9))
+
+                        box_row = (r // 3) * 3
+                        box_col = (c // 3) * 3
+
+                        used.update(
+                            self.grid[i][j]
+                            for i in range(box_row, box_row + 3)
+                            for j in range(box_col, box_col + 3)
+                        )
+
+                        remaining_candidates += len(
+                            self.full_domain - used
+                        )
+
+            box_scores[value] = remaining_candidates
+
+            # Restore
+            self.grid[row][col] = self.empty_cell
+
+        # Try the value that preserves the most options first.
+        return sorted(
+            candidates,
+            key=lambda value: box_scores[value],
+            reverse=True
+        )
+
+    def select_variable(self):
+
+        if self.variable_heuristic == "mrv":
+            return self.MRVh()
+
+        return None, None
+
+
+    def order_values(self, row, col):
+
+        if self.value_heuristic == "lcv":
+            return self.LCVh(row, col)
+
+        if self.value_heuristic == "lcb":
+            return self.LCBh(row, col)
+
+        # Baseline: try candidate values in ascending order.
+        return sorted(self.domains[row][col])
+
+
     def solve(self):
-        #track recursive calls
-        self.recursive_calls += 1
+        """Preprocess domains once, then begin backtracking."""
+
         self.preprocess_domains()
-        row, col = self.MRVh()
+
+        if self.use_arc_consistency and not self.maintain_arc_consistency():
+            return False
+
+        if any(
+            not self.domains[row][col]
+            for row in range(9)
+            for col in range(9)
+        ):
+            return False
+
+        return self.backtrack()
+
+
+
+    def backtrack(self):
+
+        self.recursive_calls += 1
+
+        if any(
+            not self.domains[row][col]
+            for row in range(9)
+            for col in range(9)
+        ):
+            return False
+
+        row, col = self.select_variable()
 
         if row is None and col is None:
             self.solved = True
             return True
-            
-        possible_vals = self.LCVh(row,col)
-        
-        for val in possible_vals:
 
-            original_dom = [
+        possible_vals = self.order_values(row, col)
+
+        for val in possible_vals:
+            original_grid = [r[:] for r in self.grid]
+            original_domains = [
                 [domain.copy() for domain in domain_row]
                 for domain_row in self.domains
-                ]
-            
+            ]
+
             self.grid[row][col] = val
             self.domains[row][col] = {val}
             self.forward_steps += 1
 
-            if self.maintain_arc_consistency():
-                if self.solve():
-                    return True
-            
-            self.grid[row][col] = self.empty_cell
-            self.domains = original_dom
+            if self.use_arc_consistency:
+                consistent = self.maintain_arc_consistency()
+            else:
+                consistent = self.update_domains(row, col, val)
+
+            if consistent:
+                consistent = all(
+                    self.domains[r][c]
+                    for r in range(9)
+                    for c in range(9)
+                )
+
+            if consistent and self.backtrack():
+                return True
+
+            self.grid = original_grid
+            self.domains = original_domains
             self.backtrack_steps += 1
-        
+
         return False
-        
+
     def print_statistics(self):
         print("\n--- Sudoku Solver Statistics ---")
         print(f"Solved: {self.solved}")
