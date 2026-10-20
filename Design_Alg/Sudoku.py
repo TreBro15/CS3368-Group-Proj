@@ -4,6 +4,9 @@ import math
 import random
 import statistics
 
+#from Design_Alg import SudokuTester
+
+
 class SudukoSolversWork:
 
     def __init__(
@@ -26,7 +29,7 @@ class SudukoSolversWork:
         ):
             raise ValueError("Grid values must be integers between 0 and 9.")
 
-        if variable_heuristic != "mrv":
+        if variable_heuristic not in ("mrv", "conflict"):
             raise ValueError("Must choose viable var heuristic")
 
         if value_heuristic not in ("lcv", "lcb"):
@@ -354,6 +357,9 @@ class SudukoSolversWork:
         if self.variable_heuristic == "mrv":
             return self.MRVh()
 
+        if self.variable_heuristic == "conflict":
+            return self.conflict_heuristic()
+
         return None, None
 
 
@@ -460,3 +466,8 @@ SudukoSolversWork.sa_random_fill = sa_random_fill
 SudukoSolversWork.solve_sa = solve_sa
 SudukoSolversWork.print_sa_statistics = print_sa_statistics
 
+#JACOB COnflict Heuristic
+
+from jacob_heuristics import conflict_heuristic
+
+SudukoSolversWork.conflict_heuristic = conflict_heuristic
