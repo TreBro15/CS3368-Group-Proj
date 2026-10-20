@@ -3,8 +3,6 @@ from collections import deque
 import math
 import random
 import statistics
-from sa_solver_methods import sa_cost, sa_random_fill, solve_sa, print_sa_statistics
-
 
 class SudukoSolversWork:
 
@@ -14,6 +12,7 @@ class SudukoSolversWork:
         variable_heuristic="mrv",
         value_heuristic="lcv",
         use_arc_consistency=True,
+        algorithm="csp"
     ):
         if len(grid) != 9 or any(len(row) != 9 for row in grid):
             raise ValueError("Grid must be a 9x9 list of lists.")
@@ -39,6 +38,7 @@ class SudukoSolversWork:
         self.variable_heuristic = variable_heuristic
         self.value_heuristic = value_heuristic
         self.use_arc_consistency = use_arc_consistency
+        self.algorithm = algorithm
         self.empty_cell = 0
         self.full_domain = set(range(1, 10))
         self.grid = [row[:] for row in grid]
@@ -446,4 +446,17 @@ class SudukoSolversWork:
         print(f"Forward steps: {self.forward_steps}")
         print(f"Recursive calls: {self.recursive_calls}")
 
+#AHMAD SA METHODS
+     
+from SaMethods import (
+    sa_cost,
+    sa_random_fill,
+    solve_sa,
+    print_sa_statistics
+)
+
+SudukoSolversWork.sa_cost = sa_cost
+SudukoSolversWork.sa_random_fill = sa_random_fill
+SudukoSolversWork.solve_sa = solve_sa
+SudukoSolversWork.print_sa_statistics = print_sa_statistics
 
