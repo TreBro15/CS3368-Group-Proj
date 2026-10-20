@@ -124,7 +124,7 @@ def benchmark_solver(solver):
     print("\n--- Sudoku Solver Benchmark ---")
     print(f"Solved: {result}")
     print(f"Valid solution: {valid}")
-    print(f"Execution time: {elapsed_time:.6f} seconds")
+    print(f"Execution time: {elapsed_time*1000:.3f} milliseconds")
 
     print("\n--- Solver Statistics ---")
     print(f"Recursive calls: {solver.recursive_calls}")
@@ -216,14 +216,28 @@ def get_user_settings():
             break
         else:
             print("Invalid choice. Try again.")
+    while True:
+        print("\nChoose solving algorithm:")
+        print("1. CSP Backtracking")
+        print("2. Simulated Annealing")
 
-    return empty_cells, seed, variable_heuristic, value_heuristic, use_arc_consistency
+        algorithm_choice = input("Enter 1 or 2: ").strip()
+
+        if algorithm_choice == "1":
+            algorithm = "csp"
+            break
+        elif algorithm_choice == "2":
+            algorithm = "sa"
+            break
+        else:
+            print("Invalid choice. Try again.")
+    return empty_cells, seed, variable_heuristic, value_heuristic, use_arc_consistency, algorithm
 
 
 
 
 if __name__ == "__main__":
-    empty_cells, seed, variable_heuristic, value_heuristic, use_arc_consistency = (
+    empty_cells, seed, variable_heuristic, value_heuristic, use_arc_consistency, algorithm = (
         get_user_settings()
     )
 
@@ -243,5 +257,23 @@ if __name__ == "__main__":
         use_arc_consistency=use_arc_consistency
     )
 
-    benchmark_solver(solver)
+    if algorithm == "csp":
+        benchmark_solver(solver)
+
+    elif algorithm == "sa":
+        import time
+
+        start_time = time.perf_counter()
+        result = solver.solve_sa()
+        elapsed_time = time.perf_counter() - start_time
+
+        print(f"\nSA Runtime: {elapsed_time*1000:.3f} milliseconds")
+        solver.print_sa_statistics()
+
+        if result:
+            print("\nSolved Sudoku:")
+            for row in solver.grid:
+                print(row)
+        else:
+            print("\nSimulated annealing did not find a solution.")
 

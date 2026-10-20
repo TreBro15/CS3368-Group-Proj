@@ -8,11 +8,20 @@ import statistics
 #  solver.solve_sa()
 #   solver.print_sa_statistics()
 
+#Changed by Trevor as my grid has 0's that mess up calculations
+
 def sa_cost(self, grid):
-    #Lewis cost: digits missing, 0 = solved.
-    #Blocksnot counted
-    rows= sum(9- len(set(row)) for row in grid)
-    cols = sum(9- len({grid[r][c] for r in range(9)}) for c in range(9)) #2 loops 2 find
+    rows = sum(
+        9 - len(set(row)) + (0 in row)
+        for row in grid
+    )
+
+    cols = sum(
+        9 - len({grid[r][c] for r in range(9)})
+        + (0 in {grid[r][c] for r in range(9)})
+        for c in range(9)
+    )
+
     return rows + cols
 
 def sa_random_fill(self, fixed):
