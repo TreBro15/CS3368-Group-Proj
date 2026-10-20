@@ -1,9 +1,22 @@
 #Inspired by RayThePizzo Test benchmarks
 
+import csv
 import time
 import random
 
 from Sudoku import SudukoSolversWork
+
+
+def run_solver(solver, algorithm):
+    """Run the selected solver and return its result and elapsed time."""
+    start_time = time.perf_counter()
+    if algorithm == "csp":
+        result = solver.solve()
+    elif algorithm == "sa":
+        result = solver.solve_sa()
+    else:
+        raise ValueError(f"Unsupported solver algorithm: {algorithm}")
+    return result, time.perf_counter() - start_time
 
 
 def is_valid_solution(grid):
@@ -115,9 +128,7 @@ def generate_puzzle(empty_cells=40, seed=None):
 def benchmark_solver(solver):
     """Run the solver and report execution time and statistics."""
 
-    start_time = time.perf_counter()
-    result = solver.solve()
-    elapsed_time = time.perf_counter() - start_time
+    result, elapsed_time = run_solver(solver, "csp")
 
     valid = result and is_valid_solution(solver.grid)
 
@@ -144,17 +155,119 @@ def benchmark_solver(solver):
         "forward_steps": solver.forward_steps,
         "backtrack_steps": solver.backtrack_steps
     }
-    
+
+
+def plot_benchmark_results(results, algorithm):
+    """Plot individual runtimes and the average runtime for each cell count."""
+    import matplotlib.pyplot as plt
+
+    empty_counts = [result["empty_cells"] for result in results]
+    runtimes_ms = [result["execution_time_ms"] for result in results]
+    grouped_runtimes = {}
+    for empty_cells, runtime in zip(empty_counts, runtimes_ms):
+        grouped_runtimes.setdefault(empty_cells, []).append(runtime)
+
+    average_empty_counts = sorted(grouped_runtimes)
+    average_runtimes = [
+        sum(grouped_runtimes[empty_cells]) / len(grouped_runtimes[empty_cells])
+        for empty_cells in average_empty_counts
+    ]
+
+    plt.figure()
+    plt.scatter(empty_counts, runtimes_ms, alpha=0.7, label="Individual tests")
+    plt.plot(
+        average_empty_counts,
+        average_runtimes,
+        marker="o",
+        label="Average runtime",
+    )
+    plt.xlabel("Number of empty cells")
+    plt.ylabel("Execution time (milliseconds)")
+    plt.title(f"Sudoku Solver Runtime ({algorithm.upper()})")
+    plt.grid(True, alpha=0.3)
+    plt.legend()
+    plt.tight_layout()
+
+    output_path = "sudoku_benchmark.png"
+    plt.savefig(output_path)
+    plt.show()
+    plt.close()
+    print(f"\nBenchmark plot saved to {output_path}")
+
+
+def export_results_to_csv(results):
+    """Write benchmark results to a CSV file."""
+    output_path = "sudoku_benchmark.csv"
+    fieldnames = [
+        "test_number",
+        "algorithm",
+        "empty_cells",
+        "execution_time_ms",
+        "solved",
+        "valid",
+        "recursive_calls",
+        "backtrack_steps",
+        "forward_steps",
+        "sa_iterations",
+        "reheats",
+    ]
+
+    with open(output_path, "w", newline="", encoding="utf-8") as csv_file:
+        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(results)
+
+    print(f"\nBenchmark results saved to {output_path}")
+
+
 def get_user_settings():
-    
+
     while True:
-        try:
-            empty_cells = int(input("Enter the number of empty cells (0-81): "))
-            if 0 <= empty_cells <= 81:
-                break
-            print("Please enter a number between 0 and 81.")
-        except ValueError:
-            print("Please enter a valid integer.")
+        print("\nChoose test mode:")
+        print("1. Single test")
+        print("2. Batch tests and plot")
+        test_mode = input("Enter 1 or 2: ").strip()
+        if test_mode in ("1", "2"):
+            break
+        print("Invalid choice. Try again.")
+
+    if test_mode == "1":
+        while True:
+            try:
+                empty_counts = [
+                    int(input("Enter the number of empty cells (0-81): "))
+                ]
+                if 0 <= empty_counts[0] <= 81:
+                    break
+                print("Please enter a number between 0 and 81.")
+            except ValueError:
+                print("Please enter a valid integer.")
+        repetitions = 1
+        batch_mode = False
+    else:
+        while True:
+            try:
+                empty_counts = [
+                    int(value.strip())
+                    for value in input(
+                        "Enter empty-cell counts separated by commas (0-81): "
+                    ).split(",")
+                ]
+                if empty_counts and all(0 <= count <= 81 for count in empty_counts):
+                    break
+                print("Enter one or more counts between 0 and 81.")
+            except ValueError:
+                print("Enter integer counts separated by commas.")
+
+        while True:
+            try:
+                repetitions = int(input("Trials per empty-cell count: "))
+                if repetitions > 0:
+                    break
+                print("Enter at least one trial.")
+            except ValueError:
+                print("Enter a valid positive integer.")
+        batch_mode = True
 
     while True:
         seed_input = input(
@@ -231,49 +344,98 @@ def get_user_settings():
             break
         else:
             print("Invalid choice. Try again.")
-    return empty_cells, seed, variable_heuristic, value_heuristic, use_arc_consistency, algorithm
-
-
+    return (
+        empty_counts,
+        repetitions,
+        batch_mode,
+        seed,
+        variable_heuristic,
+        value_heuristic,
+        use_arc_consistency,
+        algorithm,
+    )
 
 
 if __name__ == "__main__":
-    empty_cells, seed, variable_heuristic, value_heuristic, use_arc_consistency, algorithm = (
-        get_user_settings()
-    )
+    (
+        empty_counts,
+        repetitions,
+        batch_mode,
+        seed,
+        variable_heuristic,
+        value_heuristic,
+        use_arc_consistency,
+        algorithm,
+    ) = get_user_settings()
 
-    puzzle = generate_puzzle(
-        empty_cells=empty_cells,
-        seed=seed
-    )
+    results = []
+    test_number = 0
+    for empty_cells in empty_counts:
+        for _ in range(repetitions):
+            test_seed = seed + test_number if seed is not None else None
+            puzzle = generate_puzzle(empty_cells=empty_cells, seed=test_seed)
+            solver = SudukoSolversWork(
+                puzzle,
+                variable_heuristic=variable_heuristic,
+                value_heuristic=value_heuristic,
+                use_arc_consistency=use_arc_consistency,
+            )
 
-    print("\nGenerated Sudoku:")
-    for row in puzzle:
-        print(row)
+            if not batch_mode:
+                print("\nGenerated Sudoku:")
+                for row in puzzle:
+                    print(row)
 
-    solver = SudukoSolversWork(
-        puzzle,
-        variable_heuristic=variable_heuristic,
-        value_heuristic=value_heuristic,
-        use_arc_consistency=use_arc_consistency
-    )
+            if not batch_mode and algorithm == "csp":
+                benchmark_result = benchmark_solver(solver)
+                solved = benchmark_result["solved"]
+                valid = benchmark_result["valid"]
+                elapsed_time = benchmark_result["execution_time"]
+            else:
+                solved, elapsed_time = run_solver(solver, algorithm)
+                valid = solved and is_valid_solution(solver.grid)
 
-    if algorithm == "csp":
-        benchmark_solver(solver)
+            results.append(
+                {
+                    "test_number": test_number + 1,
+                    "algorithm": algorithm,
+                    "empty_cells": empty_cells,
+                    "execution_time_ms": elapsed_time * 1000,
+                    "solved": solved,
+                    "valid": valid,
+                    "recursive_calls": (
+                        solver.recursive_calls if algorithm == "csp" else None
+                    ),
+                    "backtrack_steps": (
+                        solver.backtrack_steps if algorithm == "csp" else None
+                    ),
+                    "forward_steps": (
+                        solver.forward_steps if algorithm == "csp" else None
+                    ),
+                    "sa_iterations": (
+                        solver.sa_iterations if algorithm == "sa" else None
+                    ),
+                    "reheats": solver.reheats if algorithm == "sa" else None,
+                }
+            )
 
-    elif algorithm == "sa":
-        import time
+            if batch_mode:
+                print(
+                    f"Test {test_number + 1}: {empty_cells} empty cells, "
+                    f"{elapsed_time * 1000:.3f} ms, "
+                    f"solved: {solved}, valid: {valid}"
+                )
+            elif algorithm == "sa":
+                print(f"\nSA Runtime: {elapsed_time * 1000:.3f} milliseconds")
+                solver.print_sa_statistics()
+                if solved:
+                    print("\nSolved Sudoku:")
+                    for row in solver.grid:
+                        print(row)
+                else:
+                    print("\nSimulated annealing did not find a solution.")
 
-        start_time = time.perf_counter()
-        result = solver.solve_sa()
-        elapsed_time = time.perf_counter() - start_time
+            test_number += 1
 
-        print(f"\nSA Runtime: {elapsed_time*1000:.3f} milliseconds")
-        solver.print_sa_statistics()
-
-        if result:
-            print("\nSolved Sudoku:")
-            for row in solver.grid:
-                print(row)
-        else:
-            print("\nSimulated annealing did not find a solution.")
-
+    export_results_to_csv(results)
+    plot_benchmark_results(results, algorithm)
