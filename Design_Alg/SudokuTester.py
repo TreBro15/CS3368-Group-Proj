@@ -112,9 +112,8 @@ def generate_puzzle(empty_cells=40, seed=None):
 
     return grid
 
-def benchmark_solver(puzzle):
+def benchmark_solver(solver):
     """Run the solver and report execution time and statistics."""
-    solver = SudukoSolversWork(puzzle)
 
     start_time = time.perf_counter()
     result = solver.solve()
@@ -147,6 +146,7 @@ def benchmark_solver(puzzle):
     }
     
 def get_user_settings():
+    
     while True:
         try:
             empty_cells = int(input("Enter the number of empty cells (0-81): "))
@@ -171,12 +171,61 @@ def get_user_settings():
         except ValueError:
             print("Seed must be an integer or blank.")
 
-    return empty_cells, seed
+    # Choose variable-selection heuristic.
+    while True:
+        print("\nChoose variable-selection heuristic:")
+        print("1. MRV (Minimum Remaining Values)")
+
+        variable_choice = input("Enter 1").strip()
+
+        if variable_choice == "1":
+            variable_heuristic = "mrv"
+            break
+        else:
+            print("Invalid choice. Try again.")
+
+    # Choose value-ordering heuristic.
+    while True:
+        print("\nChoose value-ordering heuristic:")
+        print("1. LCV (Least Constraining Value)")
+        print("2. LCB (Box-based heuristic)")
+
+        value_choice = input("Enter 1 or 2: ").strip()
+
+        if value_choice == "1":
+            value_heuristic = "lcv"
+            break
+        elif value_choice == "2":
+            value_heuristic = "lcb"
+            break
+        else:
+            print("Invalid choice. Try again.")
+
+    while True:
+        print("\n Are you using arc consistency?")
+        print("1. Yes")
+        print("2. No")
+
+        value_choice = input("Enter 1 or 2: ").strip()
+
+        if value_choice == "1":
+            use_arc_consistency = True
+            break
+        elif value_choice == "2":
+            use_arc_consistency = False
+            break
+        else:
+            print("Invalid choice. Try again.")
+
+    return empty_cells, seed, variable_heuristic, value_heuristic, use_arc_consistency
+
 
 
 
 if __name__ == "__main__":
-    empty_cells, seed = get_user_settings()
+    empty_cells, seed, variable_heuristic, value_heuristic, use_arc_consistency = (
+        get_user_settings()
+    )
 
     puzzle = generate_puzzle(
         empty_cells=empty_cells,
@@ -187,5 +236,12 @@ if __name__ == "__main__":
     for row in puzzle:
         print(row)
 
-    benchmark_solver(puzzle)
+    solver = SudukoSolversWork(
+        puzzle,
+        variable_heuristic=variable_heuristic,
+        value_heuristic=value_heuristic,
+        use_arc_consistency=use_arc_consistency
+    )
+
+    benchmark_solver(solver)
 
