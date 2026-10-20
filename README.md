@@ -8,6 +8,7 @@ Initial Peer Reviewed Articles:
 https://ieeexplore.ieee.org/document/7887637 - Ahmad | 22 Citations, Accessed 10/19/26
 
 https://www.dbai.tuwien.ac.at/research/project/arte/sudoku/HybridHeuristicApproachForSudoku.pdf - Jacob
+https://www.scopus.com/pages/publications/85174546067?origin=resultslist 
 
 Presentation: https://texastechuniversity-my.sharepoint.com/:p:/g/personal/bro32090_ttu_edu/IQBeIznnRzyAT4A1yYQTDA-rAeBoDqZN10ozVw9KxdgPvvQ?e=dBhPHY
 
