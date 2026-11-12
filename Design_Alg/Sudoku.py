@@ -15,7 +15,8 @@ class SudukoSolversWork:
         variable_heuristic="mrv",
         value_heuristic="lcv",
         use_arc_consistency=True,
-        algorithm="csp"
+        algorithm="csp",
+        lcb_weights=(1.0, 1.0, 1.5)
     ):
         if len(grid) != 9 or any(len(row) != 9 for row in grid):
             raise ValueError("Grid must be a 9x9 list of lists.")
@@ -38,10 +39,28 @@ class SudukoSolversWork:
         if not isinstance(use_arc_consistency, bool):
             raise ValueError("use_arc_consistency must be a boolean.")
 
+        if (
+            not isinstance(lcb_weights, (tuple, list))
+            or len(lcb_weights) != 3
+            or any(
+                not isinstance(weight, (int, float))
+                or isinstance(weight, bool)
+                or not math.isfinite(weight)
+                or weight < 0
+                for weight in lcb_weights
+            )
+            or not any(lcb_weights)
+        ):
+            raise ValueError(
+                "lcb_weights must contain three non-negative numbers "
+                "for row, column, and box, with at least one positive weight."
+            )
+
         self.variable_heuristic = variable_heuristic
         self.value_heuristic = value_heuristic
         self.use_arc_consistency = use_arc_consistency
         self.algorithm = algorithm
+        self.lcb_weights = tuple(lcb_weights)
         self.empty_cell = 0
         self.full_domain = set(range(1, 10))
         self.grid = [row[:] for row in grid]
@@ -301,56 +320,56 @@ class SudukoSolversWork:
             return count
         return sorted(self.domains[row][col], key=count_restrictions)
 
-#Least Constrained Box Heuristic TREVOR'S HEURISTIC
+#Least Constrained Box Heuristic TREVOR'S HEURISTIC improved with weights 11/12/2026
+
+    def LCB_scores(self, row, col):
+        row_weight, column_weight, box_weight = self.lcb_weights
+        box_row = (row // 3) * 3
+        box_col = (col // 3) * 3
+        scores = {}
+
+        for value in self.domains[row][col]:
+            score = 0
+            contradiction = False
+
+            for peer_col in range(9):
+                if peer_col != col and self.grid[row][peer_col] == self.empty_cell:
+                    remaining = (
+                        len(self.domains[row][peer_col])
+                        - (value in self.domains[row][peer_col])
+                    )
+                    contradiction = contradiction or remaining == 0
+                    score += row_weight * remaining
+
+            for peer_row in range(9):
+                if peer_row != row and self.grid[peer_row][col] == self.empty_cell:
+                    remaining = (
+                        len(self.domains[peer_row][col])
+                        - (value in self.domains[peer_row][col])
+                    )
+                    contradiction = contradiction or remaining == 0
+                    score += column_weight * remaining
+
+            for peer_row in range(box_row, box_row + 3):
+                for peer_col in range(box_col, box_col + 3):
+                    if (
+                        (peer_row, peer_col) != (row, col)
+                        and self.grid[peer_row][peer_col] == self.empty_cell
+                    ):
+                        remaining = (
+                            len(self.domains[peer_row][peer_col])
+                            - (value in self.domains[peer_row][peer_col])
+                        )
+                        contradiction = contradiction or remaining == 0
+                        score += box_weight * remaining
+
+            scores[value] = float("-inf") if contradiction else score
+
+        return scores
 
     def LCBh(self, row, col):
-        """Order values by how many candidates remain in the 3x3 box."""
-
-        candidates = list(self.domains[row][col])
-        box_scores = {}
-
-        start_row = (row // 3) * 3
-        start_col = (col // 3) * 3
-
-        for value in candidates:
-            self.grid[row][col] = value
-
-            remaining_candidates = 0
-
-            for r in range(start_row, start_row + 3):
-                for c in range(start_col, start_col + 3):
-
-                    if (r, c) == (row, col):
-                        continue
-
-                    if self.grid[r][c] == self.empty_cell:
-                        used = set(self.grid[r])
-                        used.update(self.grid[i][c] for i in range(9))
-
-                        box_row = (r // 3) * 3
-                        box_col = (c // 3) * 3
-
-                        used.update(
-                            self.grid[i][j]
-                            for i in range(box_row, box_row + 3)
-                            for j in range(box_col, box_col + 3)
-                        )
-
-                        remaining_candidates += len(
-                            self.full_domain - used
-                        )
-
-            box_scores[value] = remaining_candidates
-
-            # Restore
-            self.grid[row][col] = self.empty_cell
-
-        # Try the value that preserves the most options first.
-        return sorted(
-            candidates,
-            key=lambda value: box_scores[value],
-            reverse=True
-        )
+        scores = self.LCB_scores(row, col)
+        return sorted(scores, key=lambda value: (-scores[value], value))
 
     def select_variable(self):
 
@@ -376,8 +395,6 @@ class SudukoSolversWork:
 
 
     def solve(self):
-        """Preprocess domains once, then begin backtracking."""
-
         self.preprocess_domains()
 
         if self.use_arc_consistency and not self.maintain_arc_consistency():
@@ -391,8 +408,6 @@ class SudukoSolversWork:
             return False
 
         return self.backtrack()
-
-
 
     def backtrack(self):
 
