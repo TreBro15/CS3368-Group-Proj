@@ -48,3 +48,12 @@ weights are `(1.0, 1.0, 1.5)` and can be overridden with the solver's
 ## How Results are Displayed
 Graphical Results should automatically display after run
 Tabular Results are stored in sudoku_benchmark.csv for viewing
+
+### Who did what (models):
+Trevor: MRV, LCB, tester, benchmark, and the Kaggle loader
+
+Ahmad: SA approach.
+
+Jacob: the conflict heuristic.
+
+Shared code: taken from the PayThePizzo repo.
