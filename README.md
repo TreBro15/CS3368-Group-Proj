@@ -41,6 +41,8 @@ minimum and maximum difficulty/rating filters when the CSV has a `difficulty`,
 `rating`, or `difficulty rating` column. The full CSV is scanned when sampling
 or filtering to produce an unbiased sample.
 
+***Settings when running: 50 puzzles, difficulty 2.0+, seed 3368***
+
 Trevor's Model:
 The LCB value-ordering heuristic scores each candidate by the weighted number
 of candidates it preserves in peer cells. Its default row, column, and box
