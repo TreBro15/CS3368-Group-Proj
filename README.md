@@ -11,7 +11,7 @@ https://www.dbai.tuwien.ac.at/research/project/arte/sudoku/HybridHeuristicApproa
 
 Proposal Presentation: https://texastechuniversity-my.sharepoint.com/:p:/g/personal/bro32090_ttu_edu/IQBeIznnRzyAT4A1yYQTDA-rAeBoDqZN10ozVw9KxdgPvvQ?e=dBhPHY
 
-Interim Model Presentation: 
+Interim Model Presentation: https://texastechuniversity-my.sharepoint.com/:p:/g/personal/aalrahaw_ttu_edu/IQAAOrzmqZCOQK2uRsKlo6DuAekp0WFQJdDGBFUJ4iqm9gU?e=8Tam1d
 
 Possible Code: https://github.com/PayThePizzo/SudokuSolver
 
