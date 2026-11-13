@@ -31,8 +31,8 @@ whether its answer matches the dataset's known answer. A valid Sudoku solution
 that preserves the clues is reported as valid even if it differs from the
 provided answer, since a puzzle may admit multiple solutions.
 
-# Dataset (Kaggle)
-### Dataset is too large to run through GitHub so please download from https://www.kaggle.com/datasets/radcliffe/3-million-sudoku-puzzles-with-ratings
+# Dataset (Kaggle) https://www.kaggle.com/datasets/radcliffe/3-million-sudoku-puzzles-with-ratings
+### Dataset is too large to run through GitHub so we've shrunk the large data set to a smaller csv in the data folder
 For large files such as Kaggle's Sudoku dataset, choose either a specific
 1-based CSV data row (the header is not counted) or a random sample size. Random
 sampling uses reservoir sampling, so only the requested number of puzzles is
