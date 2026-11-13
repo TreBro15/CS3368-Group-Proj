@@ -9,7 +9,9 @@ https://link.springer.com/article/10.1007/s10732-007-9012-8 - Ahmad
 
 https://www.dbai.tuwien.ac.at/research/project/arte/sudoku/HybridHeuristicApproachForSudoku.pdf - Jacob
 
-Presentation: https://texastechuniversity-my.sharepoint.com/:p:/g/personal/bro32090_ttu_edu/IQBeIznnRzyAT4A1yYQTDA-rAeBoDqZN10ozVw9KxdgPvvQ?e=dBhPHY
+Proposal Presentation: https://texastechuniversity-my.sharepoint.com/:p:/g/personal/bro32090_ttu_edu/IQBeIznnRzyAT4A1yYQTDA-rAeBoDqZN10ozVw9KxdgPvvQ?e=dBhPHY
+
+Interim Model Presentation: 
 
 Possible Code: https://github.com/PayThePizzo/SudokuSolver
 
