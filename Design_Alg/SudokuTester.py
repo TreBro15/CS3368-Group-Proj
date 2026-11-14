@@ -7,7 +7,33 @@ import math
 from pathlib import Path
 
 from Sudoku import SudukoSolversWork
+from itertools import product
 
+
+def get_benchmark_models():
+    """Generate every supported CSP heuristic configuration."""
+
+    models = []
+
+    for variable, value, arc in product(
+        ("mrv", "conflict"),
+        ("lcv", "lcb"),
+        (False, True),
+    ):
+        model_name = (
+            f"{variable.upper()} + {value.upper()}"
+            + (" + AC3" if arc else "")
+        )
+
+        models.append({
+            "name": model_name,
+            "variable_heuristic": variable,
+            "value_heuristic": value,
+            "use_arc_consistency": arc,
+            "algorithm": "csp",
+        })
+
+    return models
 
 def run_solver(solver, algorithm):
     """Run the selected solver and return its result and elapsed time."""
@@ -363,73 +389,102 @@ def benchmark_solver(solver, puzzle=None, expected_solution=None):
         "backtrack_steps": solver.backtrack_steps
     }
 
-
-def plot_benchmark_results(results, algorithm):
-    """Plot individual runtimes and the average runtime for each cell count."""
+def plot_benchmark_results(results, algorithm="csp"):
     import matplotlib.pyplot as plt
+    from collections import defaultdict
 
-    empty_counts = [result["empty_cells"] for result in results]
-    runtimes_ms = [result["execution_time_ms"] for result in results]
-    grouped_runtimes = {}
-    for empty_cells, runtime in zip(empty_counts, runtimes_ms):
-        grouped_runtimes.setdefault(empty_cells, []).append(runtime)
+    metrics = {
+        "execution_time_ms": "Average Execution Time (ms)",
+        "backtrack_steps": "Average Backtracking Steps",
+        "recursive_calls": "Average Recursive Calls",
+    }
 
-    average_empty_counts = sorted(grouped_runtimes)
-    average_runtimes = [
-        sum(grouped_runtimes[empty_cells]) / len(grouped_runtimes[empty_cells])
-        for empty_cells in average_empty_counts
-    ]
+    grouped_results = defaultdict(list)
 
-    plt.figure()
-    plt.scatter(empty_counts, runtimes_ms, alpha=0.7, label="Individual tests")
-    plt.plot(
-        average_empty_counts,
-        average_runtimes,
-        marker="o",
-        label="Average runtime",
-    )
-    plt.xlabel("Number of empty cells")
-    plt.ylabel("Execution time (milliseconds)")
-    plt.title(f"Sudoku Solver Runtime ({algorithm.upper()})")
-    plt.grid(True, alpha=0.3)
-    plt.legend()
-    plt.tight_layout()
+    for result in results:
+        grouped_results[result["model"]].append(result)
 
-    output_path = "sudoku_benchmark.png"
-    plt.savefig(output_path)
-    plt.show()
-    plt.close()
-    print(f"\nBenchmark plot saved to {output_path}")
+    models = list(grouped_results.keys())
 
+    for metric, title in metrics.items():
+        averages = []
+
+        for model in models:
+            values = [
+                result[metric]
+                for result in grouped_results[model]
+                if result.get(metric) is not None
+            ]
+
+            average = sum(values) / len(values) if values else 0
+            averages.append(average)
+
+        plt.figure(figsize=(12, 6))
+
+        bars = plt.bar(models, averages)
+
+        plt.xlabel("Solver Configuration")
+        plt.ylabel(title)
+        plt.title(f"{title} by Solver Configuration")
+
+        plt.xticks(rotation=35, ha="right")
+        plt.grid(axis="y", alpha=0.3)
+
+        # Display the numerical value above each bar.
+        for bar, value in zip(bars, averages):
+            plt.text(
+                bar.get_x() + bar.get_width() / 2,
+                bar.get_height(),
+                f"{value:.2f}",
+                ha="center",
+                va="bottom",
+                fontsize=8
+            )
+
+        plt.tight_layout()
+
+        output_dir = Path(__file__).parent.parent / "data"
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        filename = output_dir / f"{metric}_comparison.png"
+        plt.savefig(filename, dpi=300)
+        plt.savefig(filename, dpi=300)
+        plt.show()
+        plt.close()
+
+        print(f"Saved {filename}")
 
 def export_results_to_csv(results):
     """Write benchmark results to a CSV file."""
-    output_path = "sudoku_benchmark.csv"
+    output_dir = Path(__file__).parent.parent / "data"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / "sudoku_benchmark.csv"
+
     fieldnames = [
-        "test_number",
-        "puzzle_name",
-        "dataset_row",
-        "rating",
-        "algorithm",
-        "empty_cells",
-        "execution_time_ms",
-        "solved",
-        "valid",
-        "matches_known_solution",
-        "recursive_calls",
-        "backtrack_steps",
-        "forward_steps",
-        "sa_iterations",
-        "reheats",
+    "test_number",
+    "puzzle_name",
+    "dataset_row",
+    "rating",
+    "model",
+    "algorithm",
+    "empty_cells",
+    "execution_time_ms",
+    "solved",
+    "valid",
+    "matches_known_solution",
+    "recursive_calls",
+    "backtrack_steps",
+    "forward_steps",
+    "sa_iterations",
+    "reheats",
     ]
 
-    with open(output_path, "w", newline="", encoding="utf-8") as csv_file:
+    with output_path.open("w", newline="", encoding="utf-8") as csv_file:
         writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(results)
 
     print(f"\nBenchmark results saved to {output_path}")
-
 
 def get_user_settings():
 
@@ -438,63 +493,83 @@ def get_user_settings():
         print("1. Generate puzzles")
         print("2. Load puzzles from a CSV dataset")
         puzzle_source_choice = input("Enter 1 or 2: ").strip()
+
         if puzzle_source_choice in ("1", "2"):
             break
         print("Invalid choice. Try again.")
 
     if puzzle_source_choice == "2":
-        default_dataset = Path(__file__).with_name("sudoku_puzzles.csv")
-        dataset_input = input(
-            f"Dataset CSV path [{default_dataset}]: "
-        ).strip()
-        dataset_path = dataset_input or default_dataset
+        dataset_path = Path(__file__).parent.parent / "data" / "sudoku_test_sample.csv"
 
         while True:
             print("\nChoose dataset selection:")
             print("1. Test one CSV data row (header is not counted)")
             print("2. Test a random sample")
+
             selection_choice = input("Enter 1 or 2: ").strip()
+
             if selection_choice in ("1", "2"):
                 break
             print("Invalid choice. Try again.")
 
         row_number = None
         sample_size = 1
+
         if selection_choice == "1":
+
             while True:
                 try:
-                    row_number = int(input("CSV data row number (starting at 1): "))
+                    row_number = int(
+                        input("CSV data row number (starting at 1): ")
+                    )
+
                     if row_number > 0:
                         break
+
                     print("Enter a positive row number.")
-                except ValueError:
-                    print("Enter a positive integer.")
-        else:
-            while True:
-                try:
-                    sample_size = int(input("Number of puzzles to sample: "))
-                    if sample_size > 0:
-                        break
-                    print("Enter at least one puzzle.")
+
                 except ValueError:
                     print("Enter a positive integer.")
 
+        else:
+
+            while True:
+                try:
+                    sample_size = int(
+                        input("Number of puzzles to sample: ")
+                    )
+
+                    if sample_size > 0:
+                        break
+
+                    print("Enter at least one puzzle.")
+
+                except ValueError:
+                    print("Enter a valid positive integer.")
+
         def optional_difficulty(prompt):
+
             while True:
                 value = input(prompt).strip()
+
                 if not value:
                     return None
+
                 try:
                     difficulty = float(value)
+
                     if math.isfinite(difficulty) and difficulty >= 0:
                         return difficulty
+
                     print("Enter a finite, non-negative rating.")
+
                 except ValueError:
                     print("Enter a number or leave blank.")
 
         difficulty_min = optional_difficulty(
             "Minimum difficulty/rating (blank for no minimum): "
         )
+
         difficulty_max = optional_difficulty(
             "Maximum difficulty/rating (blank for no maximum): "
         )
@@ -505,23 +580,29 @@ def get_user_settings():
             and difficulty_min > difficulty_max
         ):
             print("Minimum difficulty cannot exceed maximum difficulty.")
+
             difficulty_max = optional_difficulty(
                 "Enter a maximum at least as large as the minimum: "
             )
 
         sample_seed = None
+
         if selection_choice == "2":
+
             while True:
                 seed_input = input(
                     "Random sample seed (blank for a different sample each run): "
                 ).strip()
+
                 if not seed_input:
                     break
+
                 try:
                     sample_seed = int(seed_input)
                     break
+
                 except ValueError:
-                    print("Sample seed must be an integer or blank.")
+                    print("Seed must be an integer or blank.")
 
         dataset_puzzles = load_puzzle_dataset(
             dataset_path,
@@ -531,16 +612,20 @@ def get_user_settings():
             difficulty_max=difficulty_max,
             seed=sample_seed,
         )
+
         print(
             f"Selected {len(dataset_puzzles)} puzzle(s) from "
             f"{dataset_path}."
         )
+
         empty_counts = []
         repetitions = 1
         batch_mode = True
         seed = None
         puzzle_source = "dataset"
+
     else:
+
         dataset_puzzles = []
         puzzle_source = "generated"
 
@@ -548,25 +633,35 @@ def get_user_settings():
             print("\nChoose test mode:")
             print("1. Single test")
             print("2. Batch tests and plot")
+
             test_mode = input("Enter 1 or 2: ").strip()
+
             if test_mode in ("1", "2"):
                 break
+
             print("Invalid choice. Try again.")
 
         if test_mode == "1":
+
             while True:
                 try:
                     empty_counts = [
                         int(input("Enter the number of empty cells (0-81): "))
                     ]
+
                     if 0 <= empty_counts[0] <= 81:
                         break
+
                     print("Please enter a number between 0 and 81.")
+
                 except ValueError:
                     print("Please enter a valid integer.")
+
             repetitions = 1
             batch_mode = False
+
         else:
+
             while True:
                 try:
                     empty_counts = [
@@ -575,20 +670,31 @@ def get_user_settings():
                             "Enter empty-cell counts separated by commas (0-81): "
                         ).split(",")
                     ]
-                    if empty_counts and all(0 <= count <= 81 for count in empty_counts):
+
+                    if empty_counts and all(
+                        0 <= count <= 81 for count in empty_counts
+                    ):
                         break
+
                     print("Enter one or more counts between 0 and 81.")
+
                 except ValueError:
                     print("Enter integer counts separated by commas.")
 
             while True:
                 try:
-                    repetitions = int(input("Trials per empty-cell count: "))
+                    repetitions = int(
+                        input("Trials per empty-cell count: ")
+                    )
+
                     if repetitions > 0:
                         break
+
                     print("Enter at least one trial.")
+
                 except ValueError:
                     print("Enter a valid positive integer.")
+
             batch_mode = True
 
         while True:
@@ -603,69 +709,10 @@ def get_user_settings():
             try:
                 seed = int(seed_input)
                 break
+
             except ValueError:
                 print("Seed must be an integer or blank.")
 
-    # Choose variable-selection heuristic.
-    while True:
-        print("\nChoose variable-selection heuristic:")
-        print("1. MRV (Minimum Remaining Values)")
-
-        variable_choice = input("Enter 1: ").strip()
-
-        if variable_choice == "1":
-            variable_heuristic = "mrv"
-            break
-        else:
-            print("Invalid choice. Try again.")
-
-    # Choose value-ordering heuristic.
-    while True:
-        print("\nChoose value-ordering heuristic:")
-        print("1. LCV (Least Constraining Value)")
-        print("2. LCB (Box-based heuristic)")
-
-        value_choice = input("Enter 1 or 2: ").strip()
-
-        if value_choice == "1":
-            value_heuristic = "lcv"
-            break
-        elif value_choice == "2":
-            value_heuristic = "lcb"
-            break
-        else:
-            print("Invalid choice. Try again.")
-
-    while True:
-        print("\n Are you using arc consistency?")
-        print("1. Yes")
-        print("2. No")
-
-        value_choice = input("Enter 1 or 2: ").strip()
-
-        if value_choice == "1":
-            use_arc_consistency = True
-            break
-        elif value_choice == "2":
-            use_arc_consistency = False
-            break
-        else:
-            print("Invalid choice. Try again.")
-    while True:
-        print("\nChoose solving algorithm:")
-        print("1. CSP Backtracking")
-        print("2. Simulated Annealing")
-
-        algorithm_choice = input("Enter 1 or 2: ").strip()
-
-        if algorithm_choice == "1":
-            algorithm = "csp"
-            break
-        elif algorithm_choice == "2":
-            algorithm = "sa"
-            break
-        else:
-            print("Invalid choice. Try again.")
     return (
         puzzle_source,
         dataset_puzzles,
@@ -673,14 +720,10 @@ def get_user_settings():
         repetitions,
         batch_mode,
         seed,
-        variable_heuristic,
-        value_heuristic,
-        use_arc_consistency,
-        algorithm,
     )
 
-
 if __name__ == "__main__":
+
     (
         puzzle_source,
         dataset_puzzles,
@@ -688,14 +731,17 @@ if __name__ == "__main__":
         repetitions,
         batch_mode,
         seed,
-        variable_heuristic,
-        value_heuristic,
-        use_arc_consistency,
-        algorithm,
     ) = get_user_settings()
+
+    models = get_benchmark_models()
+
+    print("\n--- Models Selected ---")
+    for model in models:
+        print(f"- {model['name']}")
 
     results = []
     test_number = 0
+
     if puzzle_source == "dataset":
         test_cases = [
             (
@@ -707,107 +753,94 @@ if __name__ == "__main__":
             )
             for entry in dataset_puzzles
         ]
+
     else:
         test_cases = []
+
         for empty_cells in empty_counts:
             for _ in range(repetitions):
-                test_seed = seed + test_number if seed is not None else None
-                test_cases.append(
-                    (
-                        f"Generated {test_number + 1}",
-                        None,
-                        None,
-                        generate_puzzle(empty_cells=empty_cells, seed=test_seed),
-                        None,
-                    )
+
+                test_seed = (
+                    seed + test_number if seed is not None else None
                 )
+
+                test_cases.append((
+                    f"Generated {test_number + 1}",
+                    None,
+                    None,
+                    generate_puzzle(
+                        empty_cells=empty_cells,
+                        seed=test_seed
+                    ),
+                    None,
+                ))
+
                 test_number += 1
 
+    # Run every model against every puzzle.
     test_number = 0
+
     for puzzle_name, dataset_row, rating, puzzle, expected_solution in test_cases:
+
         test_number += 1
-        empty_cells = sum(value == 0 for row in puzzle for value in row)
-        solver = SudukoSolversWork(
-            puzzle,
-            variable_heuristic=variable_heuristic,
-            value_heuristic=value_heuristic,
-            use_arc_consistency=use_arc_consistency,
+        empty_cells = sum(
+            value == 0 for row in puzzle for value in row
         )
 
-        if not batch_mode:
-            print("\nGenerated Sudoku:")
-            for row in puzzle:
-                print(row)
+        print(f"\n{'=' * 55}")
+        print(f"PUZZLE {test_number}: {puzzle_name}")
+        print(f"{'=' * 55}")
 
-        if not batch_mode and algorithm == "csp":
-            benchmark_result = benchmark_solver(
-                solver, puzzle, expected_solution
+        for model in models:
+
+            solver = SudukoSolversWork(
+                puzzle,
+                variable_heuristic=model["variable_heuristic"],
+                value_heuristic=model["value_heuristic"],
+                use_arc_consistency=model["use_arc_consistency"],
             )
-            solved = benchmark_result["solved"]
-            valid = benchmark_result["valid"]
-            matches_solution = benchmark_result["matches_known_solution"]
-            elapsed_time = benchmark_result["execution_time"]
-        else:
-            solved, elapsed_time = run_solver(solver, algorithm)
-            valid = solved and is_valid_solution(solver.grid, puzzle)
+
+            solved, elapsed_time = run_solver(solver, "csp")
+
+            valid = (
+                solved and is_valid_solution(solver.grid, puzzle)
+            )
+
             matches_solution = matches_known_solution(
-                solver.grid, expected_solution
+                solver.grid,
+                expected_solution
             )
 
-        results.append(
-            {
+            result = {
                 "test_number": test_number,
                 "puzzle_name": puzzle_name,
                 "dataset_row": dataset_row,
                 "rating": rating,
-                "algorithm": algorithm,
+                "model": model["name"],
+                "algorithm": "csp",
                 "empty_cells": empty_cells,
                 "execution_time_ms": elapsed_time * 1000,
                 "solved": solved,
                 "valid": valid,
                 "matches_known_solution": matches_solution,
-                "recursive_calls": (
-                    solver.recursive_calls if algorithm == "csp" else None
-                ),
-                "backtrack_steps": (
-                    solver.backtrack_steps if algorithm == "csp" else None
-                ),
-                "forward_steps": (
-                    solver.forward_steps if algorithm == "csp" else None
-                ),
-                "sa_iterations": (
-                    solver.sa_iterations if algorithm == "sa" else None
-                ),
-                "reheats": solver.reheats if algorithm == "sa" else None,
+                "recursive_calls": solver.recursive_calls,
+                "backtrack_steps": solver.backtrack_steps,
+                "forward_steps": solver.forward_steps,
+                "sa_iterations": None,
+                "reheats": None,
             }
-        )
 
-        if batch_mode:
-            source_details = (
-                f", CSV row {dataset_row}"
-                + (f", rating {rating:g}" if rating is not None else "")
-                if dataset_row is not None
-                else f", {empty_cells} empty cells"
-            )
-            answer_details = (
-                f", matches known solution: {matches_solution}"
-                if matches_solution is not None
-                else ""
-            )
+            results.append(result)
+
             print(
-                f"Test {test_number}: {puzzle_name}{source_details}, "
-                f"{elapsed_time * 1000:.3f} ms, "
-                f"solved: {solved}, valid: {valid}{answer_details}"
+                f"{model['name']:<25} "
+                f"{elapsed_time * 1000:>10.3f} ms | "
+                f"Backtracks: {solver.backtrack_steps:>7} | "
+                f"Recursive: {solver.recursive_calls:>7} | "
+                f"Solved: {solved}"
             )
-        elif algorithm == "sa":
-            print(f"\nSA Runtime: {elapsed_time * 1000:.3f} milliseconds")
-            solver.print_sa_statistics()
-            if solved:
-                print("\nSolved Sudoku:")
-                for row in solver.grid:
-                    print(row)
-            else:
-                print("\nSimulated annealing did not find a solution.")
 
+    # Export and visualize results.
     export_results_to_csv(results)
-    plot_benchmark_results(results, algorithm)
+
+    plot_benchmark_results(results, "csp")
