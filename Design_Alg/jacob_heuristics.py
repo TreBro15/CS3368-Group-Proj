@@ -2,6 +2,9 @@
 #Uses MRV first and checks neighboring cells for a tie
 #Built neighbors at start to cut back runtime
 
+import random
+import time
+
 def build_peers():
     peers={}
 
@@ -54,3 +57,5 @@ def conflict_heuristic(self):
                 most_conflicts=conflicts
                 chosen=(row,col)
     return chosen
+
+#Min-conflicts iterated local search, based on Musli and Winter
