@@ -37,22 +37,20 @@ def conflict_heuristic(self):
                 continue
 
             possible = self.domains[row][col]
-            if len(possible)== 0:
+            size=len(possible)
+            if size==0 or size>fewest:
                 continue
 
             conflicts=0
 
             #check how many numbers neighbors share
-            for r, c in self.get_neighbors(row,col):
+            for r, c in PEERS[(row,col)]:
                 if self.grid[r][c]== self.empty_cell:
                     conflicts += len(possible & self.domains[r][c])
 
             #choose fewest options first then highest conflicts
-            if len(possible)<fewest or (
-                len(possible)==fewest and conflicts>most_conflicts
-            ):
-                fewest=len(possible)
+            if size<fewest or conflicts>most_conflicts:
+               fewest=size
                 most_conflicts=conflicts
                 chosen=(row,col)
-
     return chosen
