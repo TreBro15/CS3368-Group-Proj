@@ -1,5 +1,30 @@
 #Conflict based heuristic
 #Uses MRV first and checks neighboring cells for a tie
+#Built neighbors at start to cut back runtime
+
+def build_peers():
+    peers={}
+
+    for row in range(9):
+        for col in range(9):
+            neighbors=[]
+
+            for r in range(9):
+                for c in range(9):
+
+                    if row==r and col==c:
+                        continue
+
+                    same_row=r==row
+                    same_col=c==col
+                    same_box=(row//3==r//3 and col//3==c//3)
+
+                    if same_row or same_col or same_box:
+                        neighbors.append((r,c))
+
+            peers[(row,col)]=tuple(neighbors)
+    return peers
+PEERS = build_peers()
 
 def conflict_heuristic(self):
     fewest=10
