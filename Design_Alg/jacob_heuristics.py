@@ -50,7 +50,7 @@ def conflict_heuristic(self):
 
             #choose fewest options first then highest conflicts
             if size<fewest or conflicts>most_conflicts:
-               fewest=size
+                fewest=size
                 most_conflicts=conflicts
                 chosen=(row,col)
     return chosen
