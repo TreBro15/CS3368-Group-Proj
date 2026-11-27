@@ -17,7 +17,7 @@ def get_benchmark_models():
 
     for variable, value, arc in product(
         ("mrv", "conflict"),
-        ("lcv", "lcb"),
+        ("lcv", "lcb", "lcb_v2"),
         (False, True),
     ):
         model_name = (

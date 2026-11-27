@@ -44,6 +44,57 @@ def LCB_scores(self, row, col):
 
         return scores
 
+# Improved Least Constraining Box Heuristic (LCB v2)
+def LCB_scores_v2(self, row, col):
+    """
+    Score each candidate based on its impact on neighboring domains.
+
+    Lower impact is better because it means the candidate
+    removes fewer possibilities from constrained neighbors.
+    """
+    scores = {}
+
+    neighbors = self.get_neighbors(row, col)
+
+    for value in self.domains[row][col]:
+        impact = 0.0
+        contradiction = False
+
+        for nr, nc in neighbors:
+            # Only consider unassigned cells.
+            if self.grid[nr][nc] != self.empty_cell:
+                continue
+
+            neighbor_domain = self.domains[nr][nc]
+
+            if value in neighbor_domain:
+                # Removing the only remaining candidate
+                # would create a contradiction.
+                if len(neighbor_domain) == 1:
+                    contradiction = True
+                    break
+
+                # Penalize removing a candidate more heavily
+                # when the neighbor has a small domain.
+                impact += 1.0 / len(neighbor_domain)
+
+        scores[value] = (
+            float("inf") if contradiction else impact
+        )
+
+    return scores
+
+def LCBh_v2(self, row, col):
+    """
+    Order candidate values from lowest domain impact to highest.
+    """
+    scores = self.LCB_scores_v2(row, col)
+
+    return sorted(
+        scores,
+        key=lambda value: (scores[value], value)
+    )
+
 def LCBh(self, row, col):
     scores = self.LCB_scores(row, col)
     return sorted(scores, key=lambda value: (-scores[value], value))

@@ -33,7 +33,7 @@ class SudukoSolversWork:
         if variable_heuristic not in ("mrv", "conflict"):
             raise ValueError("Must choose viable var heuristic")
 
-        if value_heuristic not in ("lcv", "lcb"):
+        if value_heuristic not in ("lcv", "lcb", "lcb_v2"):
             raise ValueError("Must choose viable val heuristic")
 
         if not isinstance(use_arc_consistency, bool):
@@ -339,6 +339,9 @@ class SudukoSolversWork:
         if self.value_heuristic == "lcb":
             return self.LCBh(row, col)
 
+        if self.value_heuristic == "lcb_v2":
+            return self.LCBh_v2(row, col)
+
         # Baseline: try candidate values in ascending order.
         return sorted(self.domains[row][col])
 
@@ -436,7 +439,9 @@ from jacob_heuristics import conflict_heuristic
 
 SudukoSolversWork.conflict_heuristic = conflict_heuristic
 
-from trevor_heuristics import LCB_scores, LCBh
+from trevor_heuristics import LCB_scores, LCBh, LCB_scores_v2, LCBh_v2
 
 SudukoSolversWork.LCB_scores = LCB_scores
 SudukoSolversWork.LCBh = LCBh
+SudukoSolversWork.LCB_scores_v2 = LCB_scores_v2
+SudukoSolversWork.LCBh_v2 = LCBh_v2
